@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Chat, Mensaje } from '../../services/chat';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
+import { SocketService } from '../../services/socket.service';
 
 @Component({
   selector: 'app-chat',
@@ -20,18 +21,24 @@ export class ChatComponent implements OnInit, OnDestroy {
   
   public nuevoMensaje: string = '';
   public mensajes: Mensaje[] = [];
-
+  public usuariosConectados: any[] = [];//lista usuarios conectados!!
+  public totalUsuarios: number = 0;//total usuarios conectados!!
   public typingUser: string | null = null;
 
   private messageSub!: Subscription;
   private typingSub!: Subscription;
   private stopTypingSub!: Subscription;
+  public UsuariosSub!: Subscription;
+
   private typingTimeout: any;
+
 
   constructor(
     private chatService: Chat,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private socketService: SocketService //AÑADIDO PARA USUARIOS CONECTADOS
+
   ) {}
 
   ngOnInit(): void {
@@ -46,11 +53,12 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.router.navigate(['/login']);
       return;
     }
-
-    this.chatService.getHistory().subscribe((history: Mensaje[]) => {
-      this.mensajes = history;
-      this.scrollToBottom();
-    });
+    this.socketService.connect('http://localhost:1337', {
+      usuarioId: this.usuarioActivo,
+      nombre: this.usuarioActivoName,
+      email: sessionStorage.getItem('chat_user_email') || '',
+      organizacion: this.organizacionActiva
+    }); // Conexión al socket con datos del usuario
 
     this.chatService.joinOrganization(this.organizacionActiva);
 
@@ -68,12 +76,19 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.typingUser = null;
       this.cdr.detectChanges();
     });
+
+    this.UsuariosSub = this.socketService.connectedUsers$.subscribe((usuarios: any[]) => {
+      this.usuariosConectados = usuarios;
+      this.totalUsuarios = usuarios.length; // Actualiza el total de usuarios conectados!!
+      this.cdr.detectChanges();
+    }); //BROADCASTING DE USUARIOS CONECTADOS
   }
 
   ngOnDestroy(): void {
     if (this.messageSub) this.messageSub.unsubscribe();
     if (this.typingSub) this.typingSub.unsubscribe();
     if (this.stopTypingSub) this.stopTypingSub.unsubscribe();
+    if (this.UsuariosSub) this.UsuariosSub.unsubscribe();
     this.chatService.disconnect();
   }
 

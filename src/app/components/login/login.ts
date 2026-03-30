@@ -52,6 +52,7 @@ export class LoginComponent {
               // 3. Fake Login: Guardamos info en sessionStorage y redirigimos
               sessionStorage.setItem('chat_user_id', user._id);
               sessionStorage.setItem('chat_user_name', user.name);
+              sessionStorage.setItem('chat_user_email', user.email); // Agregar email
               sessionStorage.setItem('chat_org_id', org._id);
               sessionStorage.setItem('chat_org_name', org.name);
               
